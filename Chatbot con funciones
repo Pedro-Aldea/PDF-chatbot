@@ -1,0 +1,117 @@
+import pyfiglet
+import openai
+import os
+import pinecone
+from tqdm.auto import tqdm
+from PyPDF2 import PdfReader
+
+# Función para mostrar el banner
+def show_banner():
+    T = "Welcome to chat_PDF"
+    ASCII_art_1 = pyfiglet.figlet_format(T)
+    print(ASCII_art_1)
+
+# Función para cargar el PDF y extraer el texto
+def load_pdf(file_path):
+    with open(file_path, 'rb') as f:
+        pdf = PdfReader(f)
+        text = ""
+        for page in pdf.pages:
+            text += page.extract_text() + " "
+        paragraphs = [text[i:i+1000] for i in range(0, len(text), 600)]
+    return paragraphs
+
+# Función para generar embeddings para cada párrafo
+def generate_embeddings(paragraphs, model, batch_size):
+    embeds = []
+    res = openai.Embedding.create(input=paragraphs, engine=model, batch_size=batch_size)
+    embeds = [record['embedding'] for record in res['data']]
+    return embeds
+
+# Función para crear o obtener el índice Pinecone
+def get_pinecone_index(index_name, embeddings):
+    if index_name not in pinecone.list_indexes():
+        pinecone.create_index(index_name, dimension=len(embeddings[0]))
+    index = pinecone.Index(index_name)
+    return index
+
+# Función para insertar los embeddings en el índice Pinecone
+def insert_embeddings(index, paragraphs, embeddings, batch_size):
+    for i in tqdm(range(0, len(paragraphs), batch_size)):
+        i_end = min(i + batch_size, len(paragraphs))
+        lines_batch = paragraphs[i:i_end]
+        ids_batch = [str(n) for n in range(i, i_end)]
+        embeds_batch = embeddings[i:i_end]
+        meta = [{'text': line} for line in lines_batch]
+        to_upsert = zip(ids_batch, embeds_batch, meta)
+        index.upsert(vectors=list(to_upsert))
+
+# Función para realizar la consulta Pinecone
+def query_pinecone(index, question, model):
+    embed_question = openai.Embedding.create(input=question, engine=model)['data'][0]['embedding']
+    res = index.query([embed_question], top_k=5, include_metadata=True)
+    matching_texts = []
+    for match in res['matches']:
+        matching_texts.append(match['metadata']['text'])
+    matching_texts_str = ' '.join(matching_texts)
+    return matching_texts_str
+
+# Función para realizar la consulta ChatGPT
+def query_chatgpt(question, matching_texts_str):
+    pregunta = question
+    entrada = "Basándote en el siguiente texto: " + matching_texts_str + "\n Responde de la manera más detallada siendo fiel a la información a la siguiente pregunta: " + pregunta + " Puedes apoyarte en información que consideres relevante y que conozcas con certeza a la hora de extraer conclusiones. Siempre tendrás que expresar la información de la manera más organizada posible, usando bullet points o tablas si es necesario. En caso de que la información que se solicite no esté presente en el texto, tendrás siempre que indicar que la respuesta que vas a dar no proviene del texto ya que en este no se ha encontrado nada relacionado y posteriormente podrás responder a la pregunta con la información real que tengas:\n "
+    completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": entrada}]) 
+    if completion is not None:
+        return completion.choices[0].message.content
+    else:
+        return "Error: No se pudo obtener una respuesta del modelo."
+
+# Mostrar el banner
+show_banner()
+
+# Set up OpenAI API key and model
+openai.api_key = "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"
+MODEL = "text-embedding-ada-002"
+
+# Cargar el PDF y extraer el texto
+pdf_file = r"C:\Users\paldeamas\Desktop\DI_tech-trends-2023 (1).pdf"
+paragraphs = load_pdf(pdf_file)
+
+# Generar embeddings para cada párrafo
+batch_size = 32
+embeddings = generate_embeddings(paragraphs, MODEL, batch_size)
+
+# Initialize Pinecone API
+pinecone.init(api_key="bb5ac789-598b-4b09-89dd-9e9468cb7ce9", environment="us-east1-gcp")
+
+# Crear o obtener el índice Pinecone
+index_name = 'semantic-search-pdf'
+index = get_pinecone_index(index_name, embeddings)
+
+# Insertar los embeddings en el índice Pinecone
+insert_embeddings(index, paragraphs, embeddings, batch_size)
+
+# Bucle para hacer preguntas
+continue_loop = True
+while continue_loop:
+    # Hacer la pregunta
+    question = input("Cual es tu pregunta: ")
+    print("User:\n" + question)
+    
+    # Validar la entrada
+    if question == 'salir':
+        continue_loop = False
+        break
+    elif not question.strip():
+        print("Error: La pregunta está vacía.")
+        continue
+
+    # Realizar la consulta Pinecone
+    matching_texts_str = query_pinecone(index, question, MODEL)
+    
+    # Realizar la consulta ChatGPT
+    response = query_chatgpt(question, matching_texts_str)
+    
+    # Mostrar la respuesta de ChatGPT
+    print("\n\nRespuesta de ChatGPT:\n" + response + "\n\n\n")
+

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Futurista</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #13131f;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .chat-message.show {
+    opacity: 1;
+}
+
+        h1 {
+            font-size: 60px;
+            font-weight: 300;
+            margin-bottom: 40px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            animation: slideIn 1s ease-in-out;
+            color: #b5b5e5;
+            text-shadow: 2px 2px #000;
+            text-align: center;
+        }
+
+        /* Estilos para el botón de carga */
+        .form-group button[type="submit"] {
+            background-color: #3b9eff;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 400;
+            padding: 12px 24px;
+            text-transform: uppercase;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+            margin-top: 20px;
+            text-shadow: 1px 1px #000;
+        }
+
+        .form-group button[type="submit"]:hover {
+            background-color: #2962ff;
+        }
+
+        /* Estilos para el botón de envío de preguntas */
+        form#questionForm button[type="submit"] {
+            background-color: #b5b5e5;
+            border: none;
+            color: #000;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 400;
+            padding: 12px 24px;
+            text-transform: uppercase;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+            margin-top: 20px;
+            text-shadow: 1px 1px #fff;
+        }
+
+        form#questionForm button[type="submit"]:hover {
+            background-color: #a0a0c0;
+        }
+        .loading-message img {
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* Estilos para el contenedor del chat */
+.chat-container {
+  background-color: #f9f9f9;
+  border-radius: 20px;
+  padding: 20px;
+  max-width: 800px;
+  width: 100%;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column; /* Agrega la dirección de flexbox */
+  height: 60vh;
+  overflow-y: auto;
+  margin-bottom: 40px;
+  position: relative;
+}
+
+h1,
+h2 {
+  animation: bounce 0.5s ease-out;
+  animation-delay: 0.2s;
+  animation-fill-mode: backwards;
+}
+
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+
+    /* Estilos para el mensaje de carga */
+    .loading-message {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+    }
+    .button-active {
+    background-color: #2962ff;
+    color: #fff;
+    text-shadow: 1px 1px #000;
+    transition: background-color 0.3s ease-out;
+}
+
+.button-active:hover {
+    background-color: #3b9eff;
+}
+
+
+    .loading-message h2 {
+        font-size: 24px;
+        margin-bottom: 10px;
+    }
+
+    .loading-message img {
+        width: 50px;
+        height: 50px;
+    }
+
+    /* Estilos para los mensajes del chat */
+    .chat-message {
+        max-width: 80%;
+        padding: 12px 20px;
+        background-color: #b5b5e5;
+        border-radius: 20px;
+        color: #000;
+        margin-bottom: 20px;
+        font-size: 18px;
+        position: relative;
+        text-shadow: 1px 1px #fff;
+        opacity: 0;
+    transition: opacity 0.3s ease-out;
+    }
+
+    .chat-message::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 0;
+        height: 0;
+        border-style: solid;
+        border-width: 0 20px 20px 0;
+    }
+
+    .chat-message.user {
+        background-color: #2962ff;
+        color: #fff;
+        align-self: flex-end;
+        text-shadow: 1px 1px #000;
+    }
+
+    .chat-message.user::before {
+        right: -20px;
+        border-color: transparent #2962ff transparent transparent;
+    }
+
+    .chat-message.bot::before {
+        left: -20px;
+        border-color: transparent transparent #b5b5e5 transparent;
+    }
+
+    /* Estilos para el formulario de preguntas */
+    form#questionForm {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        max-width: 800px;
+        width: 100%;
+    }
+
+    input#question {
+        flex-grow: 1;
+        margin-right: 20px;
+        padding: 12px;
+        font-size: 16px;
+        border: none;
+        border-radius: 4px;
+        background-color: #f5f5f5;
+        color: #000;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        transition: box-shadow 0.2s ease;
+        text-shadow: 1px 1px #fff;
+    }
+
+    input#question:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px #2962ff;
+    }
+
+    /* Estilos para el botón activo */
+    .button-active {
+        background-color: #2962ff;
+        color: #fff;
+        text-shadow: 1px 1px #000;
+    }
+
+    /* Animación para el título */
+    @keyframes slideIn {
+        from {
+            transform: translateY(-50px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+</style>
+</head>
+<body>
+    <h1>chatPDF</h1>
+    <div class="form-container">
+        <form id="uploadForm" enctype="multipart/form-data" class="form-group">
+            <label for="pdfFile">Cargar PDF:</label>
+            <input         type="file" id="pdfFile" name="pdfFile" accept=".pdf" required>
+        <button type="submit" onclick="toggleButton(this);">Cargar</button>
+    </form>
+    <form id="indexForm" class="form-group">
+        <label for="indexName">Índice:</label>
+        <select id="indexName" name="indexName" required>
+            {% for index in indices %}
+            <option value="{{ index }}">{{ index }}</option>
+            {% endfor %}
+        </select>
+        <label for="indexNameInput">Nombre del índice:</label>
+        <input type="text" id="indexNameInput" name="indexNameInput" required>
+        <button type="submit" onclick="toggleButton(this);">Elegir índice</button>
+    </form>
+    
+    <div class="chat-container" id="chatContainer">
+        <!-- Las conversaciones del chat se agregarán aquí -->
+        <div class="loading-message">
+            <h2>Cargando...</h2>
+            <img src="loader.svg" alt="Loader">
+        </div>
+    </div>
+    <form id="questionForm">
+        <input type="text" id="question" name="question" required placeholder="Escriba su pregunta...">
+        <button type="submit">Enviar</button>
+    </form>
+</div>
+<script>
+    // Función para manejar el clic en un botón
+    function toggleButton(button) {
+        // Verifica si el botón ya tiene la clase "button-active"
+        if (button.classList.contains("button-active")) {
+            // Si ya está activo, no hagas nada
+            return;
+        }
+
+        // Desactiva todos los botones en la página
+        var allButtons = document.querySelectorAll("button");
+        for (var i = 0; i < allButtons.length; i++) {
+            allButtons[i].classList.remove("button-active");
+        }
+
+        // Activa el botón que fue presionado
+        button.classList.add("button-active");
+    }
+</script>
+<script>
+    $(document).ready(function () {
+        // Funciones de carga
+        function showLoadingOverlay() {
+            $(".loading-message").fadeIn();
+            $("#chatContainer").addClass("loading");
+        }
+
+        function hideLoadingOverlay() {
+            $(".loading-message").fadeOut();
+            $("#chatContainer").removeClass("loading");
+        }
+
+        // Formulario de índice
+        $("#indexForm").submit(function (event) {
+            event.preventDefault();
+            var indexName = $("#indexName").val();
+            $.ajax({
+                type: "POST",
+                url: "/select_index",
+                data: { indexName: indexName },
+                success: function (data) {
+                    console.log("Índice seleccionado:", indexName);
+                }
+            });
+        });
+
+        // Formulario de carga de PDF
+        $("#uploadForm").submit(function (event) {
+            event.preventDefault();
+            showLoadingOverlay();
+            var formData = new FormData(this);
+            $.ajax({
+                type: "POST",
+                url: "/upload_pdf",
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (data) {
+                    alert("PDF cargado y procesado exitosamente.");
+                    hideLoadingOverlay();
+                },
+                error: function () {
+                    alert("Error al cargar y procesar el PDF.");
+                    hideLoadingOverlay();
+                }
+            });
+        });
+
+        // Formulario de pregunta
+        $("#questionForm").submit(function (event) {
+            event.preventDefault();
+            showLoadingOverlay();
+            var question = $("#question").val();
+            var userMessage = $("<div>").addClass("chat-message user").text(question);
+            $("#chatContainer").append(userMessage);
+            $("#question").val("");
+
+            $.ajax({
+                type: "POST",
+url: "/ask",
+data: { question: question },
+success: function (data) {
+var response = data.response;
+var botMessage = $("<div>").addClass("chat-message bot").text(response);
+$("#chatContainer").append(botMessage);
+$("#chatContainer").scrollTop($("#chatContainer")[0].scrollHeight);
+hideLoadingOverlay();
+}
+});
+});
+});
+</script>
+
+</body>
+</html>
